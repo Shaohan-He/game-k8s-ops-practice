@@ -99,51 +99,27 @@ flowchart LR
 
 ```text
 .
-├── common/                         # 公共配置、JSON 日志、指标和基础设施客户端
-│   ├── app.py                      # FastAPI 应用工厂与健康检查
-│   ├── config.py                   # 环境变量配置
-│   ├── dependencies.py             # Redis、MySQL、Kafka 客户端
-│   ├── logging.py                  # 结构化日志
-│   └── metrics.py                  # Prometheus 指标与中间件
-├── services/
+├── common/                         # 公共配置、日志、指标与基础设施客户端
+├── services/                       # 四个 FastAPI 业务服务及 Dockerfile
 │   ├── game-gateway/               # API 网关及独立 Dockerfile
 │   ├── login-service/              # 登录、退出、会话与在线状态
 │   ├── match-service/              # 匹配队列与匹配状态
 │   └── room-service/               # 房间创建、加入、离开与查询
-├── mysql/
-│   └── init.sql                    # 表结构、索引与演示账号
-├── nginx/
-│   └── nginx.conf                  # Compose 环境反向代理
-├── monitoring/
+├── mysql/                          # MySQL 初始化 SQL
+├── nginx/                          # Nginx 反向代理配置
+├── monitoring/                     # 监控、看板与告警配置
 │   ├── prometheus/                 # 抓取配置与告警规则
-│   ├── alertmanager/               # 告警路由与接收器示例
-│   └── grafana/                    # 数据源、Dashboard Provider 与看板
-├── k8s/
-│   ├── namespace.yaml              # game-ops Namespace
-│   ├── configmap.yaml              # 应用非敏感配置
-│   ├── secret.yaml                 # 练习环境 Secret 示例
-│   ├── applications.yaml           # 四个服务的 Deployment 与 Service
-│   ├── infra.yaml                  # MySQL、Redis、Kafka
-│   ├── monitoring.yaml             # Prometheus、Grafana、Alertmanager
-│   ├── ingress.yaml                # game.local 入口
-│   ├── kustomization.yaml          # Kustomize 聚合入口
-│   └── configs/                    # K8s 内使用的 SQL 与监控配置
-├── scripts/
-│   ├── build-images.sh             # 构建四个应用镜像
-│   ├── deploy-compose.sh           # 部署 Compose 环境
-│   ├── deploy-k8s.sh               # 部署 Kubernetes 环境
-│   ├── health-check.sh             # 服务健康检查
-│   ├── log-check.sh                # 错误日志筛选
-│   ├── rollback.sh                 # Deployment 回滚
-│   └── clean.sh                    # 环境清理
-├── docs_操作记录/                  # Compose、监控、K8s、回滚完整实操记录
-│   └── 操作记录图片/               # 实操过程原始截图
+│   ├── grafana/                    # 数据源与 Dashboard
+│   └── alertmanager/               # 告警路由示例
+├── k8s/                            # 应用、基础设施、监控与 Ingress 清单
+├── scripts/                        # 构建、部署、检查、回滚与清理脚本
+├── docs_操作记录/                  # Compose、监控、K8s、回滚实操记录与截图
 ├── failure-drills/                 # 一个故障场景一份排障文档
 ├── docs_assets/                    # README 展示图片
 ├── docker-compose.yml              # 本地完整技术栈编排
-├── requirements.txt                # Python 固定版本依赖
-├── Makefile                        # 常用操作快捷入口
-├── .env.example                    # 本地环境变量示例
+├── requirements.txt                # Python 依赖
+├── Makefile                        # 常用操作入口
+├── .env.example                    # 环境变量示例
 └── README.md
 ```
 
