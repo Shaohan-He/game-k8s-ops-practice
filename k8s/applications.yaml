@@ -1,0 +1,253 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: game-gateway
+  namespace: game-ops
+  labels: {app: game-gateway, app.kubernetes.io/part-of: game-k8s-ops-practice}
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxUnavailable: 0, maxSurge: 1}
+  selector:
+    matchLabels: {app: game-gateway}
+  template:
+    metadata:
+      labels: {app: game-gateway, app.kubernetes.io/part-of: game-k8s-ops-practice}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: /metrics
+    spec:
+      securityContext:
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: game-gateway
+          image: game-k8s-ops-practice/game-gateway:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - {name: http, containerPort: 8000}
+          envFrom:
+            - configMapRef: {name: game-app-config}
+            - secretRef: {name: game-app-secret}
+          env:
+            - {name: SERVICE_NAME, value: game-gateway}
+            - {name: SERVICE_PORT, value: "8000"}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          readinessProbe:
+            httpGet: {path: /health, port: http}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet: {path: /health, port: http}
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: game-gateway
+  namespace: game-ops
+spec:
+  selector: {app: game-gateway}
+  ports:
+    - {name: http, port: 8000, targetPort: http}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: login-service
+  namespace: game-ops
+  labels: {app: login-service, app.kubernetes.io/part-of: game-k8s-ops-practice}
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels: {app: login-service}
+  template:
+    metadata:
+      labels: {app: login-service, app.kubernetes.io/part-of: game-k8s-ops-practice}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8001"
+        prometheus.io/path: /metrics
+    spec:
+      securityContext:
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: login-service
+          image: game-k8s-ops-practice/login-service:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - {name: http, containerPort: 8001}
+          envFrom:
+            - configMapRef: {name: game-app-config}
+            - secretRef: {name: game-app-secret}
+          env:
+            - {name: SERVICE_NAME, value: login-service}
+            - {name: SERVICE_PORT, value: "8001"}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          readinessProbe:
+            httpGet: {path: /health, port: http}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /health, port: http}
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: login-service
+  namespace: game-ops
+spec:
+  selector: {app: login-service}
+  ports:
+    - {name: http, port: 8001, targetPort: http}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: match-service
+  namespace: game-ops
+  labels: {app: match-service, app.kubernetes.io/part-of: game-k8s-ops-practice}
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels: {app: match-service}
+  template:
+    metadata:
+      labels: {app: match-service, app.kubernetes.io/part-of: game-k8s-ops-practice}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8002"
+        prometheus.io/path: /metrics
+    spec:
+      securityContext:
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: match-service
+          image: game-k8s-ops-practice/match-service:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - {name: http, containerPort: 8002}
+          envFrom:
+            - configMapRef: {name: game-app-config}
+            - secretRef: {name: game-app-secret}
+          env:
+            - {name: SERVICE_NAME, value: match-service}
+            - {name: SERVICE_PORT, value: "8002"}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          readinessProbe:
+            httpGet: {path: /health, port: http}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /health, port: http}
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: match-service
+  namespace: game-ops
+spec:
+  selector: {app: match-service}
+  ports:
+    - {name: http, port: 8002, targetPort: http}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: room-service
+  namespace: game-ops
+  labels: {app: room-service, app.kubernetes.io/part-of: game-k8s-ops-practice}
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels: {app: room-service}
+  template:
+    metadata:
+      labels: {app: room-service, app.kubernetes.io/part-of: game-k8s-ops-practice}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8003"
+        prometheus.io/path: /metrics
+    spec:
+      securityContext:
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: room-service
+          image: game-k8s-ops-practice/room-service:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - {name: http, containerPort: 8003}
+          envFrom:
+            - configMapRef: {name: game-app-config}
+            - secretRef: {name: game-app-secret}
+          env:
+            - {name: SERVICE_NAME, value: room-service}
+            - {name: SERVICE_PORT, value: "8003"}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          readinessProbe:
+            httpGet: {path: /health, port: http}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /health, port: http}
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: room-service
+  namespace: game-ops
+spec:
+  selector: {app: room-service}
+  ports:
+    - {name: http, port: 8003, targetPort: http}
+

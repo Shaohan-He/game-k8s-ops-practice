@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: game-app-config
+  namespace: game-ops
+data:
+  REDIS_URL: redis://redis:6379/0
+  MYSQL_HOST: mysql
+  MYSQL_PORT: "3306"
+  MYSQL_DATABASE: game_ops
+  MYSQL_USER: game
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  LOGIN_SERVICE_URL: http://login-service:8001
+  MATCH_SERVICE_URL: http://match-service:8002
+  ROOM_SERVICE_URL: http://room-service:8003
+  LOG_LEVEL: INFO
+

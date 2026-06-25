@@ -1,0 +1,27 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: default-webhook
+  group_by: ["alertname", "service"]
+  group_wait: 10s
+  group_interval: 5m
+  repeat_interval: 2h
+  routes:
+    - matchers:
+        - severity="critical"
+      receiver: critical-webhook
+
+receivers:
+  - name: default-webhook
+    webhook_configs:
+      - url: http://host.docker.internal:5001/alerts
+        send_resolved: true
+
+  - name: critical-webhook
+    webhook_configs:
+      - url: http://host.docker.internal:5001/critical-alerts
+        send_resolved: true
+
+# 以上地址是演示占位。实际使用时替换为企业微信、钉钉、飞书或自建告警网关。
+

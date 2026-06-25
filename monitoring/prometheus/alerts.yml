@@ -1,0 +1,52 @@
+groups:
+  - name: game-service-alerts
+    rules:
+      - alert: GameServiceDown
+        expr: up{job="game-services"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: game-ops
+        annotations:
+          summary: "游戏服务实例不可用"
+          description: "{{ $labels.instance }} 已连续 1 分钟无法被 Prometheus 抓取。"
+
+      - alert: GameServiceHighErrorRate
+        expr: |
+          (
+            sum by (service) (rate(game_http_requests_total{status=~"5.."}[5m]))
+            /
+            clamp_min(sum by (service) (rate(game_http_requests_total[5m])), 0.001)
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          team: game-ops
+        annotations:
+          summary: "游戏服务 5xx 错误率过高"
+          description: "{{ $labels.service }} 最近 5 分钟的 5xx 错误率超过 5%。"
+
+      - alert: GameServiceHighLatency
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le, service) (rate(game_http_request_duration_seconds_bucket[5m]))
+          ) > 1
+        for: 5m
+        labels:
+          severity: warning
+          team: game-ops
+        annotations:
+          summary: "游戏服务 P95 延迟过高"
+          description: "{{ $labels.service }} 的 P95 请求延迟连续 5 分钟超过 1 秒。"
+
+      - alert: LoginFailureSpike
+        expr: sum(rate(game_business_events_total{event="login",result="failed"}[5m])) > 0.2
+        for: 3m
+        labels:
+          severity: warning
+          team: game-ops
+        annotations:
+          summary: "登录失败事件突增"
+          description: "登录失败速率连续 3 分钟超过每秒 0.2 次，请检查密码错误、依赖或攻击流量。"
+

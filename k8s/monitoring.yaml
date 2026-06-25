@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: game-ops
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: prometheus}
+  template:
+    metadata:
+      labels: {app: prometheus}
+    spec:
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v3.3.0
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+          ports:
+            - {name: http, containerPort: 9090}
+          volumeMounts:
+            - {name: config, mountPath: /etc/prometheus, readOnly: true}
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+      volumes:
+        - name: config
+          configMap: {name: prometheus-config}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: game-ops
+spec:
+  selector: {app: prometheus}
+  ports:
+    - {name: http, port: 9090}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager
+  namespace: game-ops
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: alertmanager}
+  template:
+    metadata:
+      labels: {app: alertmanager}
+    spec:
+      containers:
+        - name: alertmanager
+          image: prom/alertmanager:v0.28.1
+          args: ["--config.file=/etc/alertmanager/alertmanager.yml"]
+          ports:
+            - {name: http, containerPort: 9093}
+          volumeMounts:
+            - {name: config, mountPath: /etc/alertmanager, readOnly: true}
+      volumes:
+        - name: config
+          configMap: {name: alertmanager-config}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager
+  namespace: game-ops
+spec:
+  selector: {app: alertmanager}
+  ports:
+    - {name: http, port: 9093}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: game-ops
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: grafana}
+  template:
+    metadata:
+      labels: {app: grafana}
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:11.6.1
+          ports:
+            - {name: http, containerPort: 3000}
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              valueFrom:
+                secretKeyRef: {name: game-app-secret, key: GRAFANA_ADMIN_USER}
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: game-app-secret, key: GRAFANA_ADMIN_PASSWORD}
+            - {name: GF_USERS_ALLOW_SIGN_UP, value: "false"}
+          volumeMounts:
+            - {name: provisioning, mountPath: /etc/grafana/provisioning/datasources/prometheus.yml, subPath: datasource.yml, readOnly: true}
+            - {name: provisioning, mountPath: /etc/grafana/provisioning/dashboards/dashboard.yml, subPath: dashboard.yml, readOnly: true}
+            - {name: dashboard, mountPath: /var/lib/grafana/dashboards/game-services-overview.json, subPath: game-services-overview.json, readOnly: true}
+      volumes:
+        - name: provisioning
+          configMap: {name: grafana-provisioning}
+        - name: dashboard
+          configMap: {name: grafana-dashboard}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: game-ops
+spec:
+  selector: {app: grafana}
+  ports:
+    - {name: http, port: 3000}

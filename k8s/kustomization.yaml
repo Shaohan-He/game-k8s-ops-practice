@@ -1,0 +1,32 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: game-ops
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secret.yaml
+  - infra.yaml
+  - applications.yaml
+  - ingress.yaml
+  - monitoring.yaml
+configMapGenerator:
+  - name: mysql-init
+    files:
+      - init.sql=configs/init.sql
+  - name: prometheus-config
+    files:
+      - prometheus.yml=configs/prometheus.yml
+      - alerts.yml=configs/alerts.yml
+  - name: alertmanager-config
+    files:
+      - alertmanager.yml=configs/alertmanager.yml
+  - name: grafana-provisioning
+    files:
+      - datasource.yml=configs/grafana-datasource.yml
+      - dashboard.yml=configs/grafana-dashboard-provider.yml
+  - name: grafana-dashboard
+    files:
+      - game-services-overview.json=configs/game-services-overview.json
+generatorOptions:
+  disableNameSuffixHash: true
+

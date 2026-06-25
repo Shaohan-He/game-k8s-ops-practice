@@ -1,0 +1,22 @@
+groups:
+  - name: game-service-alerts
+    rules:
+      - alert: GameServiceDown
+        expr: up{job="game-services"} == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "游戏服务实例不可用"
+          description: "{{ $labels.instance }} 已连续 1 分钟无法抓取。"
+      - alert: GameServiceHighErrorRate
+        expr: sum by (service) (rate(game_http_requests_total{status=~"5.."}[5m])) / clamp_min(sum by (service) (rate(game_http_requests_total[5m])), 0.001) > 0.05
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "游戏服务 5xx 错误率超过 5%"
+      - alert: GameServiceHighLatency
+        expr: histogram_quantile(0.95, sum by (le, service) (rate(game_http_request_duration_seconds_bucket[5m]))) > 1
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "游戏服务 P95 延迟超过 1 秒"

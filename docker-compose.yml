@@ -1,0 +1,217 @@
+name: game-k8s-ops-practice
+
+x-app-common: &app-common
+  restart: unless-stopped
+  networks:
+    - game-net
+  depends_on:
+    mysql:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    kafka:
+      condition: service_healthy
+  environment: &app-environment
+    REDIS_URL: redis://redis:6379/0
+    MYSQL_HOST: mysql
+    MYSQL_PORT: 3306
+    MYSQL_DATABASE: ${MYSQL_DATABASE:-game_ops}
+    MYSQL_USER: ${MYSQL_USER:-game}
+    MYSQL_PASSWORD: ${MYSQL_PASSWORD:-game_password}
+    KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    LOG_LEVEL: INFO
+
+services:
+  game-gateway:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/game-gateway/Dockerfile
+    image: game-k8s-ops-practice/game-gateway:${IMAGE_TAG:-1.0.0}
+    environment:
+      <<: *app-environment
+      SERVICE_NAME: game-gateway
+      SERVICE_PORT: 8000
+      LOGIN_SERVICE_URL: http://login-service:8001
+      MATCH_SERVICE_URL: http://match-service:8002
+      ROOM_SERVICE_URL: http://room-service:8003
+    ports:
+      - "8000:8000"
+
+  login-service:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/login-service/Dockerfile
+    image: game-k8s-ops-practice/login-service:${IMAGE_TAG:-1.0.0}
+    environment:
+      <<: *app-environment
+      SERVICE_NAME: login-service
+      SERVICE_PORT: 8001
+    ports:
+      - "8001:8001"
+
+  match-service:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/match-service/Dockerfile
+    image: game-k8s-ops-practice/match-service:${IMAGE_TAG:-1.0.0}
+    environment:
+      <<: *app-environment
+      SERVICE_NAME: match-service
+      SERVICE_PORT: 8002
+    ports:
+      - "8002:8002"
+
+  room-service:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: services/room-service/Dockerfile
+    image: game-k8s-ops-practice/room-service:${IMAGE_TAG:-1.0.0}
+    environment:
+      <<: *app-environment
+      SERVICE_NAME: room-service
+      SERVICE_PORT: 8003
+    ports:
+      - "8003:8003"
+
+  nginx:
+    image: nginx:1.27.5-alpine
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      game-gateway:
+        condition: service_healthy
+    networks:
+      - game-net
+
+  mysql:
+    image: mysql:8.4.5
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_password}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-game_ops}
+      MYSQL_USER: ${MYSQL_USER:-game}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-game_password}
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks:
+      - game-net
+
+  redis:
+    image: redis:7.4.2-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    networks:
+      - game-net
+
+  kafka:
+    image: apache/kafka:3.9.1
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks:
+      - game-net
+
+  prometheus:
+    image: prom/prometheus:v3.3.0
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - game-net
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    restart: unless-stopped
+    command: ["--config.file=/etc/alertmanager/alertmanager.yml"]
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    networks:
+      - game-net
+
+  grafana:
+    image: grafana/grafana:11.6.1
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - game-net
+
+networks:
+  game-net:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  redis-data:
+  kafka-data:
+  prometheus-data:
+  grafana-data:
+

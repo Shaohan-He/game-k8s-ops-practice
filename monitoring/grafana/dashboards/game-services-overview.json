@@ -1,0 +1,71 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "服务存活实例",
+      "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0},
+      "targets": [{"expr": "sum(up{job=\"game-services\"})", "legendFormat": "up"}],
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []}
+    },
+    {
+      "type": "timeseries",
+      "title": "各服务请求速率",
+      "gridPos": {"h": 8, "w": 9, "x": 6, "y": 0},
+      "targets": [
+        {
+          "expr": "sum by (service) (rate(game_http_requests_total[5m]))",
+          "legendFormat": "{{service}}"
+        }
+      ],
+      "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []}
+    },
+    {
+      "type": "timeseries",
+      "title": "5xx 错误率",
+      "gridPos": {"h": 8, "w": 9, "x": 15, "y": 0},
+      "targets": [
+        {
+          "expr": "sum by (service) (rate(game_http_requests_total{status=~\"5..\"}[5m])) / clamp_min(sum by (service) (rate(game_http_requests_total[5m])), 0.001)",
+          "legendFormat": "{{service}}"
+        }
+      ],
+      "fieldConfig": {"defaults": {"unit": "percentunit", "min": 0}, "overrides": []}
+    },
+    {
+      "type": "timeseries",
+      "title": "P95 请求延迟",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, service) (rate(game_http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{service}}"
+        }
+      ],
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []}
+    },
+    {
+      "type": "timeseries",
+      "title": "业务事件",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "targets": [
+        {
+          "expr": "sum by (service, event, result) (rate(game_business_events_total[5m]))",
+          "legendFormat": "{{service}} / {{event}} / {{result}}"
+        }
+      ],
+      "fieldConfig": {"defaults": {"unit": "ops"}, "overrides": []}
+    }
+  ],
+  "refresh": "15s",
+  "schemaVersion": 40,
+  "tags": ["game-ops", "fastapi"],
+  "templating": {"list": []},
+  "time": {"from": "now-1h", "to": "now"},
+  "timezone": "browser",
+  "title": "Game Services Overview",
+  "uid": "game-services-overview",
+  "version": 1
+}
+
