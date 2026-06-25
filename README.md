@@ -16,6 +16,12 @@
 
 这套设计刻意保持规模适中，适合在个人电脑、虚拟机、Minikube、Kind 或测试 Kubernetes 集群中练习。
 
+### 操作记录(详见docs_操作记录):
+
+![Grafana](docs_assets/Grafana.png)
+
+![版本回滚尝试成功](docs_assets/版本回滚尝试成功.png)
+
 ## 项目架构
 
 ```mermaid
