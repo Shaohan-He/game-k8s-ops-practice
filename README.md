@@ -20,11 +20,24 @@
 
 这套设计刻意保持规模适中，适合在个人电脑、虚拟机、Minikube、Kind 或测试 Kubernetes 集群中练习。
 
-### 操作记录(详见docs_操作记录):
+## 实践成果展示
 
-![Grafana](docs_assets/Grafana.png)
+### 监控指标与 Grafana 看板
 
-![版本回滚尝试成功](docs_assets/版本回滚尝试成功.png)
+Prometheus 持续抓取四个 FastAPI 服务的请求量、状态码、延迟和业务事件指标，Grafana 自动加载项目内置 Dashboard，用于观察服务存活、请求速率、5xx 错误率和 P95 延迟。
+
+[![Grafana 监控看板](docs_assets/Grafana.png)](./docs_操作记录/02Prometheus%20Grafana%20Alertmanager验证记录.md)
+
+### Kubernetes 错误发布与版本回滚
+
+通过发布不存在的 `login-service:9.9.9` 模拟异常版本，观察 Deployment 滚动更新超时、Pod 镜像拉取失败和旧副本可用性保护，随后使用 `kubectl rollout undo` 回滚到上一可用版本，并通过登录接口完成恢复验证。
+
+[![Kubernetes 版本回滚成功](docs_assets/版本回滚尝试成功.png)](./docs_操作记录/04Kubernetes%20发布与回滚.md)
+
+完整过程可查看：
+
+- [个人操作完整记录](./docs_操作记录/)
+- [个人故障排查记录](./failure-drills/)
 
 ## 项目架构
 
@@ -86,22 +99,52 @@ flowchart LR
 
 ```text
 .
-├── common/                         # 配置、日志、指标和基础设施客户端
+├── common/                         # 公共配置、JSON 日志、指标和基础设施客户端
+│   ├── app.py                      # FastAPI 应用工厂与健康检查
+│   ├── config.py                   # 环境变量配置
+│   ├── dependencies.py             # Redis、MySQL、Kafka 客户端
+│   ├── logging.py                  # 结构化日志
+│   └── metrics.py                  # Prometheus 指标与中间件
 ├── services/
-│   ├── game-gateway/
-│   ├── login-service/
-│   ├── match-service/
-│   └── room-service/
-├── mysql/init.sql                  # MySQL 初始化与演示账号
-├── nginx/nginx.conf
+│   ├── game-gateway/               # API 网关及独立 Dockerfile
+│   ├── login-service/              # 登录、退出、会话与在线状态
+│   ├── match-service/              # 匹配队列与匹配状态
+│   └── room-service/               # 房间创建、加入、离开与查询
+├── mysql/
+│   └── init.sql                    # 表结构、索引与演示账号
+├── nginx/
+│   └── nginx.conf                  # Compose 环境反向代理
 ├── monitoring/
-│   ├── prometheus/
-│   ├── alertmanager/
-│   └── grafana/
-├── k8s/                            # Kubernetes 清单与配置文件
-├── scripts/                        # 构建、部署、检查、回滚和清理脚本
-├── docker-compose.yml
-└── requirements.txt
+│   ├── prometheus/                 # 抓取配置与告警规则
+│   ├── alertmanager/               # 告警路由与接收器示例
+│   └── grafana/                    # 数据源、Dashboard Provider 与看板
+├── k8s/
+│   ├── namespace.yaml              # game-ops Namespace
+│   ├── configmap.yaml              # 应用非敏感配置
+│   ├── secret.yaml                 # 练习环境 Secret 示例
+│   ├── applications.yaml           # 四个服务的 Deployment 与 Service
+│   ├── infra.yaml                  # MySQL、Redis、Kafka
+│   ├── monitoring.yaml             # Prometheus、Grafana、Alertmanager
+│   ├── ingress.yaml                # game.local 入口
+│   ├── kustomization.yaml          # Kustomize 聚合入口
+│   └── configs/                    # K8s 内使用的 SQL 与监控配置
+├── scripts/
+│   ├── build-images.sh             # 构建四个应用镜像
+│   ├── deploy-compose.sh           # 部署 Compose 环境
+│   ├── deploy-k8s.sh               # 部署 Kubernetes 环境
+│   ├── health-check.sh             # 服务健康检查
+│   ├── log-check.sh                # 错误日志筛选
+│   ├── rollback.sh                 # Deployment 回滚
+│   └── clean.sh                    # 环境清理
+├── docs_操作记录/                  # Compose、监控、K8s、回滚完整实操记录
+│   └── 操作记录图片/               # 实操过程原始截图
+├── failure-drills/                 # 一个故障场景一份排障文档
+├── docs_assets/                    # README 展示图片
+├── docker-compose.yml              # 本地完整技术栈编排
+├── requirements.txt                # Python 固定版本依赖
+├── Makefile                        # 常用操作快捷入口
+├── .env.example                    # 本地环境变量示例
+└── README.md
 ```
 
 ## 本地 Docker Compose 部署
