@@ -1,12 +1,22 @@
-# game-k8s-ops-practice
+# 游戏业务微服务云原生发布运维演进项目
 
-一个面向运维工程师、DevOps 工程师和游戏运维岗位的云原生实战项目。项目用四个小型 FastAPI 服务模拟登录、匹配和房间业务，重点展示容器化、Kubernetes 发布、监控告警、日志排查和版本回滚。
+`game-k8s-ops-practice` 是一个面向运维工程师、DevOps 工程师和游戏运维岗位的云原生发布运维演进项目。项目用四个小型 FastAPI 服务模拟登录、匹配和房间业务，围绕容器化交付、Kubernetes 发布、监控告警、日志排查、故障演练和版本回滚整理成一套可复现的 v1.0.0 实践环境。
 
 本项目是运维练习环境，不是完整游戏服务端，也不具备商业生产系统的容量、可靠性或安全性。
 
 ### 个人操作完整记录：[docs_操作记录](./docs_操作记录/)
 
 ### 个人故障排查记录：[failure-drills](./failure-drills/)
+
+## 当前状态：v1.0.0
+
+v1.0.0 代表当前项目已经整理为一套完整的游戏业务微服务云原生发布运维实践：
+
+- 本地 Docker Compose 可启动完整业务链路和监控组件。
+- Kubernetes 清单已按基础配置、基础设施、业务服务、监控和网络入口分层整理。
+- Prometheus、Grafana 和 Alertmanager 覆盖服务存活、错误率、延迟和业务事件观测。
+- 发布、健康检查、日志筛选、回滚和清理脚本形成基础运维闭环。
+- 故障演练文档覆盖端口冲突、依赖缺失、镜像拉取失败、服务不可用和错误版本回滚。
 
 ## 项目背景
 
@@ -111,7 +121,13 @@ flowchart LR
 │   ├── prometheus/                 # 抓取配置与告警规则
 │   ├── grafana/                    # 数据源与 Dashboard
 │   └── alertmanager/               # 告警路由示例
-├── k8s/                            # 应用、基础设施、监控与 Ingress 清单
+├── k8s/                            # Kubernetes v1.0.0 清单
+│   ├── base/                       # Namespace、通用 ConfigMap、Secret 示例
+│   ├── infra/                      # MySQL、Redis、Kafka 基础依赖
+│   ├── apps/                       # 四个游戏业务微服务 Deployment 与 Service
+│   ├── monitoring/                 # Prometheus、Grafana、Alertmanager
+│   ├── networking/                 # Ingress 入口
+│   └── configs/                    # Kustomize 生成 ConfigMap 使用的配置文件
 ├── scripts/                        # 构建、部署、检查、回滚与清理脚本
 ├── docs_操作记录/                  # Compose、监控、K8s、回滚实操记录与截图
 ├── failure-drills/                 # 一个故障场景一份排障文档
@@ -226,6 +242,8 @@ bash scripts/clean.sh compose-volumes
 ```
 
 ## Kubernetes 部署
+
+当前 Kubernetes 目录以 `k8s/kustomization.yaml` 作为统一入口，资源按职责拆分到 `base/`、`infra/`、`apps/`、`monitoring/` 和 `networking/`。直接执行 `kubectl kustomize k8s` 可以渲染完整 v1.0.0 清单。
 
 ### 环境要求
 
@@ -453,7 +471,7 @@ bash scripts/deploy-compose.sh
 
 ### 3. Kubernetes 显示 ImagePullBackOff
 
-本地镜像没有自动进入 Minikube 或 Kind 节点。按前文执行 `minikube image load` 或 `kind load docker-image`。远程集群应推送到可访问的镜像仓库，并修改 `k8s/apps.yaml` 中的镜像地址。
+本地镜像没有自动进入 Minikube 或 Kind 节点。按前文执行 `minikube image load` 或 `kind load docker-image`。远程集群应推送到可访问的镜像仓库，并修改 `k8s/apps/applications.yaml` 中的镜像地址。
 
 ### 4. `game.local` 无法访问
 

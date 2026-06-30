@@ -4,9 +4,9 @@ set -Eeuo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NAMESPACE="${NAMESPACE:-game-ops}"
 
-kubectl apply -f "${ROOT_DIR}/k8s/namespace.yaml"
-kubectl apply -f "${ROOT_DIR}/k8s/configmap.yaml"
-kubectl apply -f "${ROOT_DIR}/k8s/secret.yaml"
+kubectl apply -f "${ROOT_DIR}/k8s/base/namespace.yaml"
+kubectl apply -f "${ROOT_DIR}/k8s/base/configmap.yaml"
+kubectl apply -f "${ROOT_DIR}/k8s/base/secret.yaml"
 
 kubectl -n "${NAMESPACE}" create configmap mysql-init \
   --from-file=init.sql="${ROOT_DIR}/k8s/configs/init.sql" \
@@ -26,10 +26,10 @@ kubectl -n "${NAMESPACE}" create configmap grafana-dashboard \
   --from-file=game-services-overview.json="${ROOT_DIR}/k8s/configs/game-services-overview.json" \
   --dry-run=client -o yaml | kubectl apply -f -
 
-kubectl apply -f "${ROOT_DIR}/k8s/infra.yaml"
-kubectl apply -f "${ROOT_DIR}/k8s/applications.yaml"
-kubectl apply -f "${ROOT_DIR}/k8s/monitoring.yaml"
-kubectl apply -f "${ROOT_DIR}/k8s/ingress.yaml"
+kubectl apply -f "${ROOT_DIR}/k8s/infra/infra.yaml"
+kubectl apply -f "${ROOT_DIR}/k8s/apps/applications.yaml"
+kubectl apply -f "${ROOT_DIR}/k8s/monitoring/monitoring.yaml"
+kubectl apply -f "${ROOT_DIR}/k8s/networking/ingress.yaml"
 
 kubectl -n "${NAMESPACE}" rollout status deployment/mysql --timeout=300s
 kubectl -n "${NAMESPACE}" rollout status deployment/redis --timeout=180s
