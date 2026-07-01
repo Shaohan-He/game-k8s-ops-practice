@@ -1,4 +1,4 @@
-.PHONY: build compose-up compose-down health k8s-up k8s-down
+.PHONY: build compose-up compose-down health k8s-up k8s-down operator-manifests operator-build operator-run operator-deploy operator-undeploy k8s-v2-up
 
 build:
 	bash scripts/build-images.sh
@@ -18,3 +18,20 @@ k8s-up:
 k8s-down:
 	bash scripts/clean.sh k8s
 
+operator-manifests:
+	$(MAKE) -C operator manifests
+
+operator-build:
+	$(MAKE) -C operator build
+
+operator-run:
+	$(MAKE) -C operator run
+
+operator-deploy:
+	$(MAKE) -C operator deploy
+
+operator-undeploy:
+	$(MAKE) -C operator undeploy
+
+k8s-v2-up:
+	kubectl apply -k k8s-v2

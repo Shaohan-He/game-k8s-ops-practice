@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: game-platform-operator-controller-manager
+  namespace: game-ops-system
+  labels:
+    app.kubernetes.io/name: game-platform-operator
+    app.kubernetes.io/part-of: game-k8s-ops-practice
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: game-platform-operator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: game-platform-operator
+        app.kubernetes.io/part-of: game-k8s-ops-practice
+    spec:
+      serviceAccountName: game-platform-operator
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: manager
+          image: ghcr.io/shaohan-he/game-k8s-ops-practice-operator:2.0.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - --leader-elect
+          ports:
+            - name: metrics
+              containerPort: 8080
+            - name: health
+              containerPort: 8081
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]

@@ -1,0 +1,17 @@
+apiVersion: ops.shaohan.dev/v1alpha1
+kind: GamePlatform
+metadata:
+  name: game-platform
+  namespace: game-ops
+spec:
+  imageRegistry: game-k8s-ops-practice
+  imageTag: "2.0.0"
+  replicas: 2
+  ingress:
+    host: game.local
+    ingressClassName: nginx
+  monitoring:
+    enabled: true
+  storage:
+    mysql:
+      size: 2Gi

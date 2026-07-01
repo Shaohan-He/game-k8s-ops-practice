@@ -8,9 +8,9 @@
 
 ### 个人故障排查记录：[failure-drills](./failure-drills/)
 
-## 当前状态：v1.0.0
+## 当前状态：v2.0.0
 
-v1.0.0 代表当前项目已经整理为一套完整的游戏业务微服务云原生发布运维实践：
+v2.0.0 在 v1.0.0 静态 Kubernetes 清单和运维脚本基础上，引入 Operator 管理完整练习环境。当前项目仍保留以下 v1 能力：
 
 - 本地 Docker Compose 可启动完整业务链路和监控组件。
 - Kubernetes 清单已按基础配置、基础设施、业务服务、监控和网络入口分层整理。
@@ -509,3 +509,30 @@ dial tcp registry-1.docker.io:443: connect: connection refused
 ## 免责声明
 
 本项目用于学习。默认账号、密码、单节点中间件、明文配置及资源规格均针对本地练习，不应直接用于生产环境。
+
+## v2.0.0 Operator 模式
+
+v2.0.0 在 `operator/` 下新增 Go/controller-runtime Kubernetes Operator。原有 `k8s/` 静态清单继续保留，作为 v1 fallback 和清晰的资源参考；v2 主路径通过 `GamePlatform` 自定义资源声明并维护完整练习环境。
+
+Operator 管理同一个命名空间内的业务服务、中间件、监控和入口资源：
+
+- `game-gateway`、`login-service`、`match-service`、`room-service` 的 Deployment 和 Service；
+- Redis、MySQL、Kafka、MySQL PVC、应用 ConfigMap、Secret 和初始化 SQL ConfigMap；
+- Prometheus、Grafana、Alertmanager、Dashboard、抓取配置和告警规则；
+- 指向 `game-gateway` 的 Ingress。
+
+部署 v2 示例：
+
+```bash
+kubectl apply -k k8s-v2
+kubectl -n game-ops get gameplatform,pods,svc,ingress
+```
+
+本地开发 Operator：
+
+```bash
+make operator-build
+make operator-run
+```
+
+修改 `operator/config/samples/ops_v1alpha1_gameplatform.yaml` 中的 `spec.imageTag` 会更新四个业务 Deployment。Operator 会在 `GamePlatform.status` 中汇总发布状态；回滚仍通过 `kubectl rollout undo` 或 `scripts/rollback.sh` 手动执行。

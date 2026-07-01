@@ -8,3 +8,5 @@ __pycache__/
 *.log
 data/
 
+.go-cache/
+.gomodcache/

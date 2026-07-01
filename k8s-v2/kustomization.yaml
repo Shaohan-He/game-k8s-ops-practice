@@ -1,0 +1,8 @@
+resources:
+  - namespace.yaml
+  - crd/ops.shaohan.dev_gameplatforms.yaml
+  - rbac/service_account.yaml
+  - rbac/role.yaml
+  - rbac/role_binding.yaml
+  - manager/manager.yaml
+  - samples/ops_v1alpha1_gameplatform.yaml

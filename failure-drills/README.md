@@ -16,3 +16,7 @@
 
 > 文档中的默认密码、单节点中间件和 `emptyDir` 方案仅用于练习环境，不应直接用于生产环境。
 
+
+## v2.0 Operator drill
+
+- [10 - Operator reconciliation recreates a deleted service Deployment](10-operator-reconcile-recovery.md): verifies that a `GamePlatform` owned Deployment is recreated after manual deletion and that rollout state remains visible through the custom resource status.
