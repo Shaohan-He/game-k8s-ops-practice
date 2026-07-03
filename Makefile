@@ -1,7 +1,16 @@
-.PHONY: build compose-up compose-down health k8s-up k8s-down operator-manifests operator-build operator-run operator-deploy operator-undeploy k8s-v2-up
+ifeq ($(OS),Windows_NT)
+VALIDATE_CMD := powershell -ExecutionPolicy Bypass -File scripts/validate.ps1
+else
+VALIDATE_CMD := bash scripts/validate.sh
+endif
+
+.PHONY: build compose-up compose-down health validate k8s-up k8s-down operator-manifests operator-build operator-run operator-deploy operator-undeploy k8s-v2-up
 
 build:
 	bash scripts/build-images.sh
+
+validate:
+	$(VALIDATE_CMD)
 
 compose-up:
 	bash scripts/deploy-compose.sh

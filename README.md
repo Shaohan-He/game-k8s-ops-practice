@@ -128,10 +128,11 @@ flowchart LR
 │   ├── monitoring/                 # Prometheus、Grafana、Alertmanager
 │   ├── networking/                 # Ingress 入口
 │   └── configs/                    # Kustomize 生成 ConfigMap 使用的配置文件
-├── scripts/                        # 构建、部署、检查、回滚与清理脚本
+├── scripts/                        # 构建、部署、检查、验证、回滚与清理脚本
 ├── docs_操作记录/                  # Compose、监控、K8s、回滚实操记录与截图
 ├── failure-drills/                 # 一个故障场景一份排障文档
 ├── docs_assets/                    # README 展示图片
+├── .github/workflows/              # GitHub Actions 质量验证
 ├── docker-compose.yml              # 本地完整技术栈编排
 ├── requirements.txt                # Python 依赖
 ├── Makefile                        # 常用操作入口
@@ -428,8 +429,28 @@ bash scripts/rollback.sh login-service 2
 - Kafka 事件仍能正常写入；
 - 数据库变更与应用版本兼容。
 
-## Shell 脚本
+## 质量验证
 
+项目提供统一的离线质量门禁，不启动 Docker Compose 或 Kubernetes 集群：
+
+```bash
+make validate
+# 或在 Bash 环境中直接运行
+bash scripts/validate.sh
+
+# Windows PowerShell 可直接运行
+powershell -ExecutionPolicy Bypass -File scripts/validate.ps1
+```
+
+当前检查覆盖：
+
+- Python 服务语法编译：`python -m compileall common services`
+- Operator 单元测试：`go test ./...`
+- 三套清单渲染：`kubectl kustomize k8s`、`kubectl kustomize operator/config/default`、`kubectl kustomize k8s-v2`
+
+同一脚本由 GitHub Actions CI 调用，用于在 push 和 pull request 阶段确认项目展示能力没有被静态变更破坏。
+
+## Shell 脚本
 | 脚本 | 用途 |
 | --- | --- |
 | `build-images.sh` | 构建四个应用镜像 |
@@ -439,6 +460,8 @@ bash scripts/rollback.sh login-service 2
 | `log-check.sh` | 筛选 Compose 或 Kubernetes 错误日志 |
 | `rollback.sh` | 回滚 Kubernetes Deployment |
 | `clean.sh` | 清理 Compose 或 Kubernetes 环境 |
+| `validate.sh` | 执行 Python、Operator 和 Kustomize 离线质量验证 |
+| `validate.ps1` | Windows 本地执行同等质量验证 |
 
 ## 常见问题
 

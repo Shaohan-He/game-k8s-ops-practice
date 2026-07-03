@@ -8,6 +8,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -47,8 +48,12 @@ func testPlatform() *opsv1alpha1.GamePlatform {
 
 func newTestReconciler(t *testing.T, objects ...client.Object) (*GamePlatformReconciler, *opsv1alpha1.GamePlatform) {
 	t.Helper()
+	return newTestReconcilerForPlatform(t, testPlatform(), objects...)
+}
+
+func newTestReconcilerForPlatform(t *testing.T, platform *opsv1alpha1.GamePlatform, objects ...client.Object) (*GamePlatformReconciler, *opsv1alpha1.GamePlatform) {
+	t.Helper()
 	scheme := testScheme(t)
-	platform := testPlatform()
 	allObjects := append([]client.Object{platform}, objects...)
 	client := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(platform, &appsv1.Deployment{}).WithObjects(allObjects...).Build()
 	return &GamePlatformReconciler{Client: client, Scheme: scheme}, platform
@@ -109,6 +114,60 @@ func TestReconcileUpdatesApplicationImagesFromTag(t *testing.T) {
 	}
 }
 
+func TestReconcileUsesDefaultSpecValues(t *testing.T) {
+	platform := &opsv1alpha1.GamePlatform{
+		TypeMeta:   metav1.TypeMeta{APIVersion: "ops.shaohan.dev/v1alpha1", Kind: "GamePlatform"},
+		ObjectMeta: metav1.ObjectMeta{Name: "game-platform", Namespace: "game-ops"},
+	}
+	r, platform := newTestReconcilerForPlatform(t, platform)
+	reconcileOnce(t, r, platform)
+
+	var deploy appsv1.Deployment
+	if err := r.Get(context.Background(), types.NamespacedName{Name: "game-gateway", Namespace: platform.Namespace}, &deploy); err != nil {
+		t.Fatal(err)
+	}
+	if deploy.Spec.Replicas == nil || *deploy.Spec.Replicas != defaultReplicas {
+		t.Fatalf("replicas = %v, want %d", deploy.Spec.Replicas, defaultReplicas)
+	}
+	gotImage := deploy.Spec.Template.Spec.Containers[0].Image
+	wantImage := "game-k8s-ops-practice/game-gateway:2.0.0"
+	if gotImage != wantImage {
+		t.Fatalf("image = %s, want %s", gotImage, wantImage)
+	}
+
+	var ingress networkingv1.Ingress
+	if err := r.Get(context.Background(), types.NamespacedName{Name: "game-gateway", Namespace: platform.Namespace}, &ingress); err != nil {
+		t.Fatal(err)
+	}
+	if gotHost := ingress.Spec.Rules[0].Host; gotHost != defaultIngressHost {
+		t.Fatalf("ingress host = %s, want %s", gotHost, defaultIngressHost)
+	}
+
+	var pvc corev1.PersistentVolumeClaim
+	if err := r.Get(context.Background(), types.NamespacedName{Name: "mysql-data", Namespace: platform.Namespace}, &pvc); err != nil {
+		t.Fatal(err)
+	}
+	gotStorage := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
+	if gotStorage.String() != defaultMySQLSize {
+		t.Fatalf("mysql storage = %s, want %s", gotStorage.String(), defaultMySQLSize)
+	}
+}
+
+func TestReconcileSkipsMonitoringWhenDisabled(t *testing.T) {
+	platform := testPlatform()
+	disabled := false
+	platform.Spec.Monitoring.Enabled = &disabled
+	r, platform := newTestReconcilerForPlatform(t, platform)
+	reconcileOnce(t, r, platform)
+
+	for _, name := range []string{"prometheus", "alertmanager", "grafana"} {
+		var deploy appsv1.Deployment
+		err := r.Get(context.Background(), types.NamespacedName{Name: name, Namespace: platform.Namespace}, &deploy)
+		if !apierrors.IsNotFound(err) {
+			t.Fatalf("expected monitoring deployment %s to be absent, got err=%v", name, err)
+		}
+	}
+}
 func TestReconcileRecreatesMissingDeployment(t *testing.T) {
 	r, platform := newTestReconciler(t)
 	reconcileOnce(t, r, platform)

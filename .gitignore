@@ -10,3 +10,7 @@ data/
 
 .go-cache/
 .gomodcache/
+.go-appdata/
+operator/bin/
+coverage.out
+htmlcov/
